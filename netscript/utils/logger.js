@@ -1,56 +1,65 @@
 var logLevels = {
-    trace: {
+    TRACE: {
+        name: "TRACE",
         value: 1,
         color: "green"
 
     },
-    info: {
-        value: 2,
+    INFO: {
+        name: "INFO",
+        value: 1,
         color: "white"
 
     },
-    error: {
-        value: 3,
+    ERROR: {
+        name: "ERROR",
+        value: 1,
         color: "red"
 
     }
 };
 
-let logLevel = logLevels["info"];
+let logLevel = logLevels["INFO"];
 
 // Logging individual messages
 export function trace(functionName, message) {
-    logArr("trace", functionName, [message]);
+    logArr("TRACE", functionName, [message]);
 }
 
 export function info(functionName, message) {
-    logArr("info", functionName, [message]);
+    logArr("INFO", functionName, [message]);
 }
 
 export function error(functionName, message) {
-    logArr("error", functionName, [message]);
+    logArr("ERROR", functionName, [message]);
 }
 
 // Logging array pf messages
 export function traceArr(functionName, messages) {
-    logArr("trace", functionName, messages);
+    logArr("TRACE", functionName, messages);
 }
 
 export function infoArr(functionName, messages) {
-    logArr("info", functionName, messages);
+    logArr("INFO", functionName, messages);
 }
 
 export function errorArr(functionName, messages) {
-    logArr("error", functionName, messages);
+    logArr("ERROR", functionName, messages);
 }
 
 export function setLogLevel(newLogLevel) {
-    logLevel = logLevels[newLogLevel.toLowerCase()];
+    let newLogLevelObject = logLevels[newLogLevel.toUpperCase()];
+    
+    if(newLogLevelObject === undefined){
+        throw new Error( newLogLevel + "is not a valid log level.");
+    }
+    
+    logLevel = newLogLevelObject;
 
 }
 
 function logHeader(logLevel, functionName) {
-    tprintColored(`${getTime()} [${logLevel.toUpperCase()}] ${functionName}`, logLevels[logLevel].color);
+    tprintColored(`${getTime()} [${logLevel.toUpperCase()}] ${functionName}`, logLevels[logLevel.toUpperCase()].color);
 }
 
 function getTime() {
@@ -63,19 +72,25 @@ function getTime() {
 }
 
 function logArr(logLevel, functionName, messages) {
-    if (isLogLevel(logLevel)) {
+    if (isLogLevel(logLevels[logLevel])) {
         logHeader(logLevel, functionName);
 
-        for (let i = 0; i < messages.length; i++)
-            tprintColored(`    ${messages[i]}`, logLevels[logLevel].color);
+        for (let i = 0; i < messages.length; i++){
+            tprintColored(`- ${messages[i]}`, logLevels[logLevel.toUpperCase()].color);
+        }
     }
 }
 
 function isLogLevel(currentLogLevel) {
-    return logLevels[currentLogLevel].value >= logLevel.value;
+    if(currentLogLevel === undefined)
+        throw new Error("Cannot log with level undefined.");
+    else if(logLevel === undefined){
+        throw new Error("Log Level is undefined.");
+    }
+    return currentLogLevel.value >= logLevel.value;
 }
 
-export function tprintColored(txt, color) {
+function tprintColored(txt, color) {
     let terminalInput = document.getElementById("terminal-input");
     let rowElement = document.createElement("tr");
     let cellElement = document.createElement("td");
