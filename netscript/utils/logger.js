@@ -2,18 +2,24 @@ var logLevels = {
     TRACE: {
         name: "TRACE",
         value: 1,
-        color: "green"
+        color: "white"
+
+    },
+    DEBUG: {
+        name: "DEBUG",
+        value: 2,
+        color: "white"
 
     },
     INFO: {
         name: "INFO",
-        value: 1,
+        value: 3,
         color: "white"
 
     },
     ERROR: {
         name: "ERROR",
-        value: 1,
+        value: 4,
         color: "red"
 
     }
@@ -22,6 +28,10 @@ var logLevels = {
 let logLevel = logLevels["INFO"];
 
 // Logging individual messages
+export function debug(functionName, message) {
+    logArr("DEBUG", functionName, [message]);
+}
+
 export function trace(functionName, message) {
     logArr("TRACE", functionName, [message]);
 }
@@ -35,6 +45,10 @@ export function error(functionName, message) {
 }
 
 // Logging array pf messages
+export function debugArr(functionName, messages) {
+    logArr("DEBUG", functionName, messages);
+}
+
 export function traceArr(functionName, messages) {
     logArr("TRACE", functionName, messages);
 }
@@ -87,6 +101,7 @@ function isLogLevel(currentLogLevel) {
     else if(logLevel === undefined){
         throw new Error("Log Level is undefined.");
     }
+    
     return currentLogLevel.value >= logLevel.value;
 }
 

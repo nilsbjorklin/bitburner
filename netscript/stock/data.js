@@ -4,23 +4,29 @@ let stocks = {};
 
 const buyThreshold = 65;
 const sellThreshold = 50;
+const changeFactor = 5;
 
 let threshold = {
-    SELL: buyThreshold,
-    BUY: sellThreshold,
+    BUY: buyThreshold,
+    SELL: sellThreshold,
     asArray: function() {
         return ["SELL: " + this.SELL, "BUY: " + this.BUY];
     },
+    setBuy: function(buyThreshold) {
+        validLimit(buyThreshold);
+        this.BUY = buyThreshold;
+    },
+    setSell: function(sellThreshold) {
+        validLimit(sellThreshold);
+        this.SELL = sellThreshold;
+    },
     valid: function() {
-        if (Number(this.SELL) === "NaN" || this.SELL > 100 || this.SELL < 0) {
-            throw new Error(`${this.SELL} is not a valid sell threshold.`);
-        } else if (isNan(this.BUY) || this.BUY > 100 || this.BUY < 0) {
-            throw new Error(`${this.BUY} is not a valid buy threshold.`);
-        }
+        validLimit(this.BUY);
+        validLimit(this.SELL);
     }
 }
 
-export function getOrder(symbol) {
+export function getOrder(ns, symbol) {
     let stock = getStock(symbol);
     threshold.valid();
     let arr = threshold.asArray();
@@ -31,45 +37,85 @@ export function getOrder(symbol) {
     ]);
 
     if (stock.forecast > threshold.BUY) {
-        logger.info("ORDER", "BUY!");
-        return 1;
-
+        return stock.getPurchaseAmmount(ns.getServerMoneyAvailable("home"));
     } else if (stock.forecast < threshold.SELL) {
-        logger.info("ORDER", "SELL!");
-        return -1;
+        return -stock.ammount;
     } else {
-        logger.info("ORDER", "No order");
         return 0;
     }
 }
-export function main(ns) {
-    logger.setLogLevel("info");
-    let symbol = "ECP";
 
-    addStock(symbol, 0.7, 0);
-    setForecast(symbol, 30);
-    setAmmount(symbol, 1221);
-    
-    logger.trace("ORDER", getOrder(symbol));
-    setForecast(symbol, 0.6);
-    logger.trace("ORDER", getOrder(symbol));
+export async function main(ns) {
+    logger.setLogLevel("debug");
 
+    let stockSymbols = ns.getStockSymbols();
+    for (let i = 0; i < 10; i++) {
+        let bought = false;
+        for (let i = 0; i < stockSymbols.length; i++) {
+            let symbol = stockSymbols[i];
+            let orderAmmount = updateStock(ns, symbol);
 
-    printStock(symbol);
+            if (orderAmmount > 0) {
+                purchaseStock(symbol, orderAmmount);
+                bought = true;
+            } else if (orderAmmount < 0) {
+                sellStock(symbol, orderAmmount);
+            }
+        }
+        if (bought) {
+            threshold.setBuy(threshold.BUY + changeFactor);
+        } else {
+            threshold.setBuy(threshold.BUY - changeFactor);
+        }
+        logger.debug("END", "---------------------------------");
+        await ns.sleep(6000);
+    }
+    printHolding(stockSymbols);
+}
+
+function updateStock(ns, symbol) {
+    let stock = getStock(symbol);
+    if (stock === undefined) {
+        logger.trace("LOAD", `${symbol} does not exist in stocks, loading stock`);
+        addStock(symbol,
+            getForecast(ns, symbol),
+            getPrice(ns, symbol),
+            ns.getStockMaxShares(symbol));
+    } else {
+        logger.trace("UPDATE", `Updating stock ${symbol}.`);
+        setForecast(symbol, getForecast(ns, symbol));
+        setPrice(symbol, getPrice(ns, symbol));
+    }
+    return getOrder(ns, symbol);
 }
 
 export function setForecast(symbol, forecast) {
-
+    logger.trace("symbol: " + symbol, "forecast: " + forecast);
     let stock = getStock(symbol);
     let oldForecast = stock.forecast;
 
-    stock.setForecast(ammount);
+    stock.setForecast(forecast);
 
     logger.traceArr("FORECAST", ["OLD: " + oldForecast, "NEW: " + stock.forecast]);
 }
 
-export function getForecast(symbol) {
-    return getStock(symbol).forecast;
+export function setPrice(symbol, forecast) {
+
+    let stock = getStock(symbol);
+    let oldPrice = stock.price;
+
+    stock.setPrice(forecast);
+
+    logger.traceArr("PRICE", ["OLD: " + oldPrice, "NEW: " + stock.price]);
+}
+
+function getForecast(ns, symbol) {
+    return Math.floor(ns.getStockForecast(symbol) * 100);
+}
+
+
+function getPrice(ns, symbol) {
+    return ns.getStockPrice(symbol);
 }
 
 export function getAmmount(symbol) {
@@ -86,69 +132,112 @@ export function setAmmount(symbol, ammount) {
     logger.traceArr("Ammount", ["OLD: " + oldAmmount, "NEW: " + stock.forecast]);
 }
 
-export function addStock(symbolValue, forecastValue, ammountValue) {
-    validForecast(forecastValue);
+function purchaseStock(symbol, ammount) {
+    let stock = getStock(symbol);
+    stock.changeAmmount(ammount);
+    logger.debugArr("BOUGHT", ["STOCK: " + symbol, "AMMOUNT: " + ammount]);
+}
+
+function sellStock(symbol, ammount) {
+    let stock = getStock(symbol);
+    stock.changeAmmount(ammount);
+    logger.debugArr("SOLD", ["STOCK: " + symbol, "AMMOUNT: " + ammount]);
+}
+export function addStock(symbolValue, forecastValue, priceValue, ammountValue) {
+    validLimit(forecastValue);
     validAmmount(ammountValue);
     logger.traceArr("Adding new stock.", ["Symbol: " + symbolValue,
         "Forecast: " + forecastValue,
-        "Ammount: " + ammountValue
+        `Ammount: 0/${ammountValue}`
     ]);
 
     let stock = {
         symbol: symbolValue.toUpperCase(),
         forecast: forecastValue,
-        ammount: ammountValue,
+        price: priceValue,
+        ammount: 0,
+        maxAmmount: ammountValue,
         asArray: function() {
             return ["Symbol: " + this.symbol,
                 "Forecast: " + this.forecast,
-                "Ammount: " + this.ammount
+                "Price: " + this.price,
+                `Ammount: ${this.ammount}/${this.maxAmmount}(${this.ammount/this.maxAmmount*100}%)`
             ];
         },
+        getPurchaseAmmount: function(money) {
+            return Math.min(Math.floor(money / this.price) + this.ammount, this.maxAmmount - this.ammount);
+        },
         isValid: function() {
-            validForecast(this.forecast);
+            validLimit(this.forecast);
             validAmmount(this.ammount);
         },
         setForecast: function(newForecast) {
-            validForecast(newForecast);
+            validLimit(newForecast);
             this.forecast = newForecast;
         },
-        setAmmount: function(newAmmount) {
-            validAmmount(newAmmount);
-            this.ammount = newAmmount;
+        changeAmmount: function(changeAmmout) {
+            validAmmount(this.ammount + changeAmmout);
+            this.ammount += changeAmmout;
+        },
+        setPrice: function(price) {
+            validPrice(price);
+            this.price = price;
         }
     };
     stocks[symbolValue.toUpperCase()] = stock;
 }
 
+function validPrice(price) {
+    if (isNaN(price)) {
+        throwNewError(`Stock price(${price}) is not a number.`);
+    }
+    if (price < 0) {
+        throwNewError(`Stock price(${price}) is less than 0.`);
+    }
+}
+
 function validAmmount(ammount) {
-    if (Number(ammount) === "NaN") {
-        throw new Error(`Stock ammount(${forecast}) is not a number.`);
+    if (isNaN(ammount)) {
+        throwNewError(`Stock ammount(${ammount}) is not a number.`);
     }
     if (!Number.isInteger(ammount)) {
-        throw new Error(`Stock ammount(${forecast}) is not an integer.`);
+        throwNewError(`Stock ammount(${ammount}) is not an integer.`);
     }
     if (ammount < 0) {
-        throw new Error(`Stock ammount(${forecast}) is less than 100.`);
+        throwNewError(`Stock ammount(${ammount}) is less than 0.`);
     }
 }
 
-function validForecast(forecast) {
-    if (Number(forecast) === "NaN") {
-        throw new Error(`Stock forecast(${forecast}) is not a number.`);
-    }
-    if (!Number.isInteger(forecast)) {
-        throw new Error(`Stock forecast(${forecast}) is not an integer.`);
-    }
-    if (forecast > 100) {
-        throw new Error(`Stock forecast(${forecast}) is more than 100.`);
-    }
-    if (forecast < 0) {
-        throw new Error(`Stock forecast(${forecast}) is less than 100.`);
-    }
+function throwNewError(text) {
+    throwNewError(text);
+
 }
 
+function validLimit(limit) {
+    if (isNaN(limit)) {
+        throwNewError(`Limit(${limit}) is not a number.`);
+    }
+    if (!Number.isInteger(limit)) {
+        throwNewError(`Limit(${limit}) is not an integer.`);
+    }
+    if (limit > 100) {
+        throwNewError(`Limit(${limit}) is more than 100.`);
+    }
+    if (limit < 0) {
+        throwNewError(`Limit(${limit}) is less than 0.`);
+    }
+}
+function printHolding(stockSymbols){
+    for (let i = 0; i < stockSymbols.length; i++) {
+        let symbol = stockSymbols[i];
+        let stock = getStock(symbol);
+        if(stock.ammount !== 0){
+            printStock(symbol);
+        }
+    }
+}
 function printStock(symbol) {
-    logger.info("STOCK:", getStock(symbol.toUpperCase()).asArray());
+    logger.infoArr("STOCK:", getStock(symbol.toUpperCase()).asArray());
 }
 
 function printThreshold() {
@@ -157,10 +246,6 @@ function printThreshold() {
 
 function getStock(symbol) {
     let stock = stocks[symbol.toUpperCase()];
-
-    if (stock === undefined) {
-        throw new Error(`Could not get stock, ${symbol.toUpperCase()} does not exist.`);
-    }
 
     return stock;
 }
