@@ -92,6 +92,7 @@ function logArr(logLevel, functionName, messages) {
         for (let i = 0; i < messages.length; i++){
             tprintColored(`- ${messages[i]}`, logLevels[logLevel.toUpperCase()].color);
         }
+            tprintColored("\n", logLevels[logLevel.toUpperCase()].color);
     }
 }
 
@@ -104,6 +105,17 @@ function isLogLevel(currentLogLevel) {
     
     return currentLogLevel.value >= logLevel.value;
 }
+
+export function throwNewError(text) {
+    error("EXCEPTION", text);
+    //throw text;
+}
+
+export function throwNewErrorArr(arr) {
+    errorArr("EXCEPTION", arr);
+    //throw arr;
+}
+
 
 function tprintColored(txt, color) {
     let terminalInput = document.getElementById("terminal-input");
