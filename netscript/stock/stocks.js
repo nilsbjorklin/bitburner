@@ -10,44 +10,52 @@ export function updateStocks(ns) {
         let symbol = stockSymbols[i];
         addStock(ns, symbol);
     }
+    stocks.sort(compareStocks);
 }
 
 export async function main(ns) {
     ns.disableLog("ALL");
     let argument = ns.args[0].toUpperCase();
-    ns.tprint("START SCRIPT: " + ns.getScriptName(), "ARGUMENT: " + argument);
-    
+
     if (argument === "START") {
+        ns.tprint("[STARTING INVESTMENT SCRIPT]");
         looping = true;
+        let bought = 0;
+        let sold = 0;
         while (looping) {
-            sellBadStocks(ns);
+            sold += sellBadStocks(ns);
             await ns.sleep(3000);
-            buyStocks(ns);
+            bought += buyStocks(ns);
             await ns.sleep(3000);
         }
-        ns.tprint("EXIT LOOP STOPPED");
+        ns.print("TOTAL STOCK TRANSACTIONS: " + (bought + sold));
         sellAllStocks(ns);
+        ns.tprint("[INVESTMENT SCRIPT EXITED]");
     } else if (argument === "STOP") {
         looping = false;
-        ns.tprint("EXIT STOP COMMAND CALLED, looping: " + looping)
-    } else if (argument === "UPDATE")
+        ns.tprint("[STOP COMMAND CALLED]")
+    } else if (argument === "UPDATE") {
         updateStocks(ns);
-    else if (argument === "BUY")
+    } else if (argument === "BUY") {
         buyStocks(ns);
-    else if (argument === "SELL")
+    } else if (argument === "SELL") {
         sellBadStocks(ns);
-    else if (argument === "SELLALL")
+    } else if (argument === "HOLDING") {
+        printHoldings(ns);
+    } else if (argument === "PRINT") {
+        printAllStocks(ns);
+    } else if (argument === "SELLALL") {
         sellAllStocks(ns);
-    else
+    } else {
         ns.tprint("[ERROR] INVALID COMMAND: " + argument);
-
+    }
 
 }
 
 function buyStocks(ns) {
     updateStocks(ns);
-    stocks.sort(compareStocks);
     let money;
+    let stocksBought = 0;
     for (let i = 0; i < stocks.length; i++) {
         let stock = stocks[i];
         money = ns.getServerMoneyAvailable(ns.getHostname());
@@ -59,15 +67,14 @@ function buyStocks(ns) {
         if (ammount !== 0) {
             let price = ns.buyStock(stock.symbol, ammount);
             if (price !== 0) {
-                ns.print(sprintf("BOUGHT STOCK: %5s AMMOUNT: %24s COST: %s",
-                        stock.symbol,
-                        `${ns.nFormat(ammount, "0.000a")}/${ns.nFormat(stocks[i].cap, "0.000a")}(${ns.nFormat(ammount/stocks[i].cap, "0.0%")})`,
-                        ns.nFormat(ammount * price, "$0.000a")));
-            } else {
-                ns.tprint(sprintf("COULD NOT BUY STOCK: %s AMMOUNT: %s COST: %s",
-                        stock.symbol,
-                        ns.nFormat(ammount, "0.000a"),
-                        ns.nFormat(ammount * price, "$0.000a")));
+                ns.print(sprintf("BOUGHT STOCK%'_6s AMMOUNT: %'08s/%'08s (%'06s) COST:%s",
+                    stock.symbol,
+                    ns.nFormat(ammount, "0.000a"),
+                    ns.nFormat(stocks[i].cap, "0.000a"),
+                    ns.nFormat(ammount / stocks[i].cap, "0.0%"),
+                    ns.nFormat(ammount * price, "$0.000a"),
+                ));
+                stocksBought++;
             }
         }
         if (money < 1000000000) {
@@ -80,6 +87,7 @@ function buyStocks(ns) {
         }
     }
     updateStocks(ns);
+    return stocksBought;
 }
 
 function compareStocks(a, b) {
@@ -98,30 +106,40 @@ function compareStocks(a, b) {
 }
 
 function sellAllStocks(ns) {
-    updateStocks(ns);
     ns.tprint("SELLING ALL STOCKS");
+    updateStocks(ns);
     for (let i = 0; i < stocks.length; i++) {
         if (stocks[i].ammount !== 0) {
             sellOneStock(ns, stocks[i]);
             stocks[i].ammount = 0;
         }
     }
+    ns.tprint("ALL STOCKS SOLD");
 }
 
 function sellBadStocks(ns) {
     updateStocks(ns);
+
+    let stocksSold = 0;
+    
     for (let i = 0; i < stocks.length; i++) {
         if (stocks[i].ammount !== 0 && stocks[i].forecast < sellThreshold) {
-            ns.sellStock(stocks[i].symbol, stocks[i].ammount);
             sellOneStock(ns, stocks[i]);
             stocks[i].ammount = 0;
+            stocksSold++;
         }
     }
+    return stocksSold;
 }
 
 function sellOneStock(ns, stock) {
+    ns.print(sprintf("SOLD STOCK%'_6s  AMMOUNT: %'08s/%'08s (%'06s)",
+        stock.symbol,
+        ns.nFormat(stock.ammount, "0.000a"),
+        ns.nFormat(stock.cap, "0.000a"),
+        ns.nFormat(stock.ammount / stock.cap, "0.0%")
+    ));
     ns.sellStock(stock.symbol, stock.ammount);
-    ns.print("SOLD STOCK: " + stock.symbol);
 }
 
 function addStock(ns, symbol) {
@@ -135,28 +153,34 @@ function addStock(ns, symbol) {
 }
 
 function printAllStocks(ns) {
+    ns.print("[PRINTING ALL STOCKS]");
+    updateStocks(ns);
     for (let i = 0; i < stocks.length; i++) {
         if (stocks[i] !== undefined)
             printStock(ns, stocks[i]);
+
     }
+    ns.print("[ALL STOCKS PRINTED]");
 }
 
 function printHoldings(ns) {
+    updateStocks(ns);
+    ns.print("[START HOLDINGS");
     for (let i = 0; i < stocks.length; i++) {
         if (stocks[i].ammount > 0)
-            ns.print("HOLDING", [
-                "SYMBOL: " + stocks[i].symbol,
-                `AMMOUNT: ${ns.nFormat(stocks[i].ammount, "0.000a")}/${ns.nFormat(stocks[i].cap, "0.000a")}(${ns.nFormat(stocks[i].ammount/stocks[i].cap, "0.0%")})`
-            ]);
+            printStock(ns, stocks[i]);
     }
+    ns.print("[EXIT HOLDINGS]");
 }
 
 function printStock(ns, stock) {
-    ns.print("STOCK", [
-        "SYMBOL: " + stock.symbol,
-        "FORECAST: " + stock.forecast,
-        "PRICE: " + ns.nFormat(stock.price, "$0.000a"),
-        "AMMOUNT: " + ns.nFormat(stock.ammount, "0.000a"),
-        "CAP: " + ns.nFormat(stock.cap, "0.000a"),
-    ]);
+
+    ns.print(sprintf("STOCK%'_6s FORECAST: %'0-5s PRICE: $%'08s AMMOUNT: %'08s/%'08s (%'05s)",
+        stock.symbol,
+        ns.nFormat(stock.forecast, "0.000"),
+        ns.nFormat(stock.price, "0.000a"),
+        ns.nFormat(stock.ammount, "0.000a"),
+        ns.nFormat(stock.cap, "0.000a"),
+        ns.nFormat(stock.ammount / stock.cap, "0.0%")
+    ));
 }
