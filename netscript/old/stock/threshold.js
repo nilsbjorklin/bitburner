@@ -3,7 +3,7 @@ import * as logger from "/netscript/utils/logger.js";
 let stocks = {};
 
 const buyThreshold = 55;
-const sellThreshold = 50;
+const sellThreshold = 55;
 
 let threshold = {
     BUY: buyThreshold,
@@ -13,14 +13,14 @@ let threshold = {
     },
     setBuy: function(newThreshold) {
         validLimit(newThreshold);
-        if (newThreshold >= 50)
+        if (newThreshold >= 55)
             this.BUY = newThreshold;
         else
             this.BUY = sellThreshold;
     },
     setSell: function(newThreshold) {
         validLimit(newThreshold);
-        if (newThreshold >= 50)
+        if (newThreshold >= 55)
             this.SELL = newThreshold;
         else
             this.SELL = sellThreshold;
@@ -37,13 +37,11 @@ export function getThreshold() {
 }
 
 export function changeBuyThreshold(buyThreshold) {
-    logger.info("BUY THRESHOLD", "CHANGE: " + buyThreshold);
     threshold.setBuy(threshold.BUY + buyThreshold);
 
 }
 
 export function changeSellThreshold(sellThreshold) {
-    logger.info("SELL THRESHOLD", "CHANGE: " + sellThreshold);
     threshold.setSell(threshold.SELL + sellThreshold);
 }
 

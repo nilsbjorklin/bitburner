@@ -1,143 +1,162 @@
-import * as logger from "/netscript/utils/logger.js";
+//import * as logger from "/netscript/utils/logger.js";
 
-let stocks = {};
-
-export function setPrice(symbol, price) {
-
-    let stock = getStock(symbol);
-    let oldPrice = stock.price;
-
-    stock.setPrice(price);
-
-    logger.traceArr("PRICE", ["OLD: " + oldPrice, "NEW: " + stock.price]);
-}
-
-export function getPrice(symbol) {
-    return getStock(symbol).price;
-}
-
-export function setForecast(symbol, forecast) {
-
-    let stock = getStock(symbol);
-    let oldForecast = stock.forecast;
-
-    stock.setForecast(forecast);
-
-    logger.traceArr("FORECAST", ["OLD: " + oldForecast, "NEW: " + stock.forecast]);
-}
-
-export function getForecast(symbol) {
-    return getStock(symbol).forecast;
-}
-
-export function changeAmmount(symbol, ammount) {
-    let stock = getStock(symbol);
-    stock.changeAmmount(ammount);
-    logger.debugArr("CHANGE AMMOUNT", ["STOCK: " + symbol, "AMMOUNT: " + ammount]);
-}
-
-export function getAmmount(symbol) {
-    return getStock(symbol).ammount;
-}
-export function addStock(symbolValue, forecastValue, priceValue, ammountValue) {
-    validLimit(forecastValue);
-    validAmmount(ammountValue);
-    logger.traceArr("Adding new stock.", ["Symbol: " + symbolValue,
-        "Forecast: " + forecastValue,
-        `Ammount: 0/${ammountValue}`
-    ]);
-
-    let stock = {
-        symbol: symbolValue.toUpperCase(),
-        forecast: forecastValue,
-        price: priceValue,
-        ammount: 0,
-        maxAmmount: ammountValue,
-        /*asArray: function() {
-            return ["Symbol: " + this.symbol,
-                "Forecast: " + this.forecast,
-                "Price: " + this.price,
-                `Ammount: ${this.ammount}/${this.maxAmmount}(${this.ammount / this.maxAmmount * 100}%)`
-            ];
-        },*/
-        getPurchaseAmmount: function(money) {
-            let ammount = Math.min(Math.floor(money / this.price) + this.ammount, this.maxAmmount - this.ammount)
-            logger.debug("PURCHASE AMMOUNT", 
-            ["AMMOUNT " + ammount, 
-            "MONEY: " + money, 
-            "CURRENT AMMOUNT: " + this.ammount,
-            "MAX AMMOUNT: " + this.maxAmmount]);
-            return ammount;
-        },
-        isValid: function() {
-            validLimit(this.forecast);
-            validAmmount(this.ammount);
-        },
-        setForecast: function(newForecast) {
-            validLimit(newForecast);
-            this.forecast = newForecast;
-        },
-        changeAmmount: function(changeAmmout) {
-            validAmmount(this.ammount + changeAmmout);
-            this.ammount += changeAmmout;
-        },
-        setPrice: function(price) {
-            validPrice(price);
-            this.price = price;
-        }
-    };
-    stocks[symbolValue.toUpperCase()] = stock;
-}
-
-function validPrice(price) {
-    if (isNaN(price)) {
-        logger.throwNewError(`Stock price(${price}) is not a number.`);
-    }
-    if (price < 0) {
-        logger.throwNewError(`Stock price(${price}) is less than 0.`);
-    }
-}
-
-function validAmmount(ammount) {
-    if (isNaN(ammount)) {
-        logger.throwNewError(`Stock ammount(${ammount}) is not a number.`);
-    }
-    if (!Number.isInteger(ammount)) {
-        logger.throwNewError(`Stock ammount(${ammount}) is not an integer.`);
-    }
-    if (ammount < 0) {
-        logger.throwNewError(`Stock ammount(${ammount}) is less than 0.`);
-    }
-}
-
-function validLimit(limit) {
-    if (isNaN(limit)) {
-        logger.throwNewError(`Limit(${limit}) is not a number.`);
-    }
-    if (!Number.isInteger(limit)) {
-        logger.throwNewError(`Limit(${limit}) is not an integer.`);
-    }
-    if (limit > 100) {
-        logger.throwNewError(`Limit(${limit}) is more than 100.`);
-    }
-    if (limit < 0) {
-        logger.throwNewError(`Limit(${limit}) is less than 0.`);
-    }
-}
-
-export function printHolding(stockSymbols) {
+let stocks;
+let sellThreshold = 0.5;
+let looping = true;
+export function updateStocks(ns) {
+    stocks = [];
+    let stockSymbols = ns.getStockSymbols();
     for (let i = 0; i < stockSymbols.length; i++) {
         let symbol = stockSymbols[i];
-        let stock = getStock(symbol);
-        if (stock !== undefined && stock.ammount !== 0) {
-            printStock(symbol);
+        addStock(ns, symbol);
+    }
+}
+
+export async function main(ns) {
+    ns.disableLog("ALL");
+    let argument = ns.args[0].toUpperCase();
+    ns.tprint("START SCRIPT: " + ns.getScriptName(), "ARGUMENT: " + argument);
+    
+    if (argument === "START") {
+        looping = true;
+        while (looping) {
+            sellBadStocks(ns);
+            await ns.sleep(3000);
+            buyStocks(ns);
+            await ns.sleep(3000);
+        }
+        ns.tprint("EXIT LOOP STOPPED");
+        sellAllStocks(ns);
+    } else if (argument === "STOP") {
+        looping = false;
+        ns.tprint("EXIT STOP COMMAND CALLED, looping: " + looping)
+    } else if (argument === "UPDATE")
+        updateStocks(ns);
+    else if (argument === "BUY")
+        buyStocks(ns);
+    else if (argument === "SELL")
+        sellBadStocks(ns);
+    else if (argument === "SELLALL")
+        sellAllStocks(ns);
+    else
+        ns.tprint("[ERROR] INVALID COMMAND: " + argument);
+
+
+}
+
+function buyStocks(ns) {
+    updateStocks(ns);
+    stocks.sort(compareStocks);
+    let money;
+    for (let i = 0; i < stocks.length; i++) {
+        let stock = stocks[i];
+        money = ns.getServerMoneyAvailable(ns.getHostname());
+
+        let ammount = Math.floor(money / ns.getStockAskPrice(stock.symbol));
+        if (ammount + stock.ammount > stock.cap) {
+            ammount = stock.cap - stock.ammount;
+        }
+        if (ammount !== 0) {
+            let price = ns.buyStock(stock.symbol, ammount);
+            if (price !== 0) {
+                ns.print(sprintf("BOUGHT STOCK: %5s AMMOUNT: %24s COST: %s",
+                        stock.symbol,
+                        `${ns.nFormat(ammount, "0.000a")}/${ns.nFormat(stocks[i].cap, "0.000a")}(${ns.nFormat(ammount/stocks[i].cap, "0.0%")})`,
+                        ns.nFormat(ammount * price, "$0.000a")));
+            } else {
+                ns.tprint(sprintf("COULD NOT BUY STOCK: %s AMMOUNT: %s COST: %s",
+                        stock.symbol,
+                        ns.nFormat(ammount, "0.000a"),
+                        ns.nFormat(ammount * price, "$0.000a")));
+            }
+        }
+        if (money < 1000000000) {
+            i = stocks.length;
+        }
+
+        if (stock.forecast < 0.5) {
+            ns.print(`STOCK Forecast to low STOCK: ${stock.symbol} FORECAST: ${stock.forecast}`);
+            i = stocks.length;
+        }
+    }
+    updateStocks(ns);
+}
+
+function compareStocks(a, b) {
+    const forecastA = a.forecast;
+    const forecastB = b.forecast;
+
+    let comparison = 0;
+
+    if (forecastA > forecastB) {
+        comparison = -1;
+    } else if (forecastA < forecastB) {
+        comparison = 1;
+    }
+
+    return comparison;
+}
+
+function sellAllStocks(ns) {
+    updateStocks(ns);
+    ns.tprint("SELLING ALL STOCKS");
+    for (let i = 0; i < stocks.length; i++) {
+        if (stocks[i].ammount !== 0) {
+            sellOneStock(ns, stocks[i]);
+            stocks[i].ammount = 0;
         }
     }
 }
 
-export function getStocks(){
-    return stocks;
+function sellBadStocks(ns) {
+    updateStocks(ns);
+    for (let i = 0; i < stocks.length; i++) {
+        if (stocks[i].ammount !== 0 && stocks[i].forecast < sellThreshold) {
+            ns.sellStock(stocks[i].symbol, stocks[i].ammount);
+            sellOneStock(ns, stocks[i]);
+            stocks[i].ammount = 0;
+        }
+    }
 }
-export function getStock(symbol){
-    return stocks[symbol];
+
+function sellOneStock(ns, stock) {
+    ns.sellStock(stock.symbol, stock.ammount);
+    ns.print("SOLD STOCK: " + stock.symbol);
+}
+
+function addStock(ns, symbol) {
+    stocks.push({
+        symbol: symbol,
+        forecast: ns.getStockForecast(symbol),
+        price: ns.getStockAskPrice(symbol),
+        ammount: ns.getStockPosition(symbol)[0],
+        cap: ns.getStockMaxShares(symbol)
+    });
+}
+
+function printAllStocks(ns) {
+    for (let i = 0; i < stocks.length; i++) {
+        if (stocks[i] !== undefined)
+            printStock(ns, stocks[i]);
+    }
+}
+
+function printHoldings(ns) {
+    for (let i = 0; i < stocks.length; i++) {
+        if (stocks[i].ammount > 0)
+            ns.print("HOLDING", [
+                "SYMBOL: " + stocks[i].symbol,
+                `AMMOUNT: ${ns.nFormat(stocks[i].ammount, "0.000a")}/${ns.nFormat(stocks[i].cap, "0.000a")}(${ns.nFormat(stocks[i].ammount/stocks[i].cap, "0.0%")})`
+            ]);
+    }
+}
+
+function printStock(ns, stock) {
+    ns.print("STOCK", [
+        "SYMBOL: " + stock.symbol,
+        "FORECAST: " + stock.forecast,
+        "PRICE: " + ns.nFormat(stock.price, "$0.000a"),
+        "AMMOUNT: " + ns.nFormat(stock.ammount, "0.000a"),
+        "CAP: " + ns.nFormat(stock.cap, "0.000a"),
+    ]);
 }

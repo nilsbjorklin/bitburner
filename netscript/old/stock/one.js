@@ -100,7 +100,7 @@ export function getOrder(ns, symbol, buyThreshold, sellThreshold) {
 }
 
 export async function main(ns) {
-    runOne(ns, ns.args[0], "debug", 50, 50);
+    logger.info("STOCK: " + ns.args[0], "RESULT: " + runOne(ns, ns.args[0], "debug", 50, 50));
 }
 
 export function runOne(ns, symbol, logLevel, buyThreshold, sellThreshold) {

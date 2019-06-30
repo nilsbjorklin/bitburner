@@ -63,11 +63,11 @@ export function errorArr(functionName, messages) {
 
 export function setLogLevel(newLogLevel) {
     let newLogLevelObject = logLevels[newLogLevel.toUpperCase()];
-    
-    if(newLogLevelObject === undefined){
-        throw new Error( newLogLevel + "is not a valid log level.");
+
+    if (newLogLevelObject === undefined) {
+        throw new Error(newLogLevel + "is not a valid log level.");
     }
-    
+
     logLevel = newLogLevelObject;
 
 }
@@ -76,9 +76,13 @@ function logHeader(logLevel, functionName) {
     tprintColored(`${getTime()} [${logLevel.toUpperCase()}] ${functionName}`, logLevels[logLevel.toUpperCase()].color);
 }
 
+function logLine(logLevel, functionName, line) {
+    tprintColored(`${getTime()} [${logLevel.toUpperCase()}] ${functionName} ${line}`, logLevels[logLevel.toUpperCase()].color);
+}
+
 function getTime() {
     var now = new Date();
-    return sprintf('%s:%s:%s.%s',
+    return sprintf('%s:%s:%s.%-4s',
         now.getHours(),
         now.getMinutes(),
         now.getSeconds(),
@@ -87,22 +91,26 @@ function getTime() {
 
 function logArr(logLevel, functionName, messages) {
     if (isLogLevel(logLevels[logLevel])) {
-        logHeader(logLevel, functionName);
+        if (messages.length === 1) {
+            logLine(logLevel, functionName, messages[0]);
+        } else {
+            logHeader(logLevel, functionName);
 
-        for (let i = 0; i < messages.length; i++){
-            tprintColored(`- ${messages[i]}`, logLevels[logLevel.toUpperCase()].color);
-        }
+            for (let i = 0; i < messages.length; i++) {
+                tprintColored(`- ${messages[i]}`, logLevels[logLevel.toUpperCase()].color);
+            }
             tprintColored("\n", logLevels[logLevel.toUpperCase()].color);
+        }
     }
 }
 
 function isLogLevel(currentLogLevel) {
-    if(currentLogLevel === undefined)
+    if (currentLogLevel === undefined)
         throw new Error("Cannot log with level undefined.");
-    else if(logLevel === undefined){
+    else if (logLevel === undefined) {
         throw new Error("Log Level is undefined.");
     }
-    
+
     return currentLogLevel.value >= logLevel.value;
 }
 
