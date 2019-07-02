@@ -6,7 +6,8 @@ let moneyAvaiable;
 export async function main(ns) {
     ns.disableLog("ALL");
     let numberOfThreads = ns.args[0];
-    let target = ns.getHostname();
+    let target = ns.args[1];
+    ns.print("Starting to hack" + target + " with " + numberOfThreads + " threads.");
     while (true) {
         getServerInfo(ns, target, numberOfThreads);
         if (securityLevel > securityThreshold) {

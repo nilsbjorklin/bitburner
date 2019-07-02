@@ -1,5 +1,3 @@
-//import * as logger from "/netscript/utils/logger.js";
-
 let stocks;
 let sellThreshold = 0.5;
 let looping = true;
@@ -52,31 +50,54 @@ export async function main(ns) {
 
 }
 
+function getPurchaseAmmount(ns, stock, money) {
+    let commision = 100000;
+    let stockPrice = ns.getStockAskPrice(stock.symbol);
+    let ammount = (money - commision) / stockPrice;
+    
+    if(ammount <= 0)
+        return 0;
+    
+    if (ammount + stock.ammount > stock.cap) 
+        return stock.cap - stock.ammount;
+    return ammount;
+}
+
+function tryPurchase(ns, stock) {
+    let money = ns.getServerMoneyAvailable(ns.getHostname());
+    let ammount = getPurchaseAmmount(ns, stock, money);
+    
+    if (ammount !== 0) {
+        let price = ns.buyStock(stock.symbol, ammount);
+        if (price !== 0) {
+            ns.print(sprintf("Bought stock(%'_6s), ammount: %'08s/%'08s (%'06s), cost:%s",
+                stock.symbol,
+                ns.nFormat(ammount, "0.000a"),
+                ns.nFormat(stock.cap, "0.000a"),
+                ns.nFormat(ammount / stock.cap, "0.0%"),
+                ns.nFormat(ammount * price, "$0.000a")
+            ));
+            return 1;
+        } else {
+            ns.print(sprintf("Couldn't buy stock(%'_6s), forecast: %'08s, ammount: %'08s",
+                stock.symbol,
+                ns.nFormat(stock.forecast, "0.000a"),
+                ns.nFormat(ammount, "0.000a")
+            ));
+        }
+    }
+    return 0;
+}
+
 function buyStocks(ns) {
     updateStocks(ns);
     let money;
     let stocksBought = 0;
     for (let i = 0; i < stocks.length; i++) {
         let stock = stocks[i];
-        money = ns.getServerMoneyAvailable(ns.getHostname());
 
-        let ammount = Math.floor(money / ns.getStockAskPrice(stock.symbol));
-        if (ammount + stock.ammount > stock.cap) {
-            ammount = stock.cap - stock.ammount;
-        }
-        if (ammount !== 0) {
-            let price = ns.buyStock(stock.symbol, ammount);
-            if (price !== 0) {
-                ns.print(sprintf("BOUGHT STOCK%'_6s AMMOUNT: %'08s/%'08s (%'06s) COST:%s",
-                    stock.symbol,
-                    ns.nFormat(ammount, "0.000a"),
-                    ns.nFormat(stocks[i].cap, "0.000a"),
-                    ns.nFormat(ammount / stocks[i].cap, "0.0%"),
-                    ns.nFormat(ammount * price, "$0.000a"),
-                ));
-                stocksBought++;
-            }
-        }
+        stocksBought += tryPurchase(ns, stock);
+        
         if (money < 1000000000) {
             i = stocks.length;
         }
@@ -121,7 +142,7 @@ function sellBadStocks(ns) {
     updateStocks(ns);
 
     let stocksSold = 0;
-    
+
     for (let i = 0; i < stocks.length; i++) {
         if (stocks[i].ammount !== 0 && stocks[i].forecast < sellThreshold) {
             sellOneStock(ns, stocks[i]);
