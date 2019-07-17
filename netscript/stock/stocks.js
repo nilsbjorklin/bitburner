@@ -32,6 +32,7 @@ export async function main(ns) {
     } else if (argument === "STOP") {
         looping = false;
         ns.tprint("[STOP COMMAND CALLED]")
+        sellAllStocks(ns);
     } else if (argument === "UPDATE") {
         updateStocks(ns);
     } else if (argument === "BUY") {
@@ -70,8 +71,9 @@ function tryPurchase(ns, stock) {
     if (ammount !== 0) {
         let price = ns.buyStock(stock.symbol, ammount);
         if (price !== 0) {
-            ns.print(sprintf("Bought stock(%'_6s), ammount: %'08s/%'08s (%'06s), cost:%s",
+            ns.print(sprintf("Bought stock(%'_6s), forecast: %'05s, ammount: %'08s/%'08s (%'06s), cost:%s",
                 stock.symbol,
+                ns.nFormat(stock.forecast, "0.000a"),
                 ns.nFormat(ammount, "0.000a"),
                 ns.nFormat(stock.cap, "0.000a"),
                 ns.nFormat(ammount / stock.cap, "0.0%"),
@@ -79,7 +81,7 @@ function tryPurchase(ns, stock) {
             ));
             return 1;
         } else {
-            ns.print(sprintf("Couldn't buy stock(%'_6s), forecast: %'08s, ammount: %'08s",
+            ns.print(sprintf("Couldn't buy stock(%'_6s), forecast: %'05s, ammount: %'08s",
                 stock.symbol,
                 ns.nFormat(stock.forecast, "0.000a"),
                 ns.nFormat(ammount, "0.000a")
@@ -154,8 +156,9 @@ function sellBadStocks(ns) {
 }
 
 function sellOneStock(ns, stock) {
-    ns.print(sprintf("SOLD STOCK%'_6s  AMMOUNT: %'08s/%'08s (%'06s)",
+    ns.print(sprintf("Sold stock(%'_6s), forecast: %'05s, ammount: %'08s/%'08s (%'06s)",
         stock.symbol,
+        ns.nFormat(stock.forecast, "0.000"),
         ns.nFormat(stock.ammount, "0.000a"),
         ns.nFormat(stock.cap, "0.000a"),
         ns.nFormat(stock.ammount / stock.cap, "0.0%")

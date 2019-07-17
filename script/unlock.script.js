@@ -36,10 +36,10 @@ if (fileExists("SQLInject.exe")) {
     print(" - SQLInject.exe does not exist.");
 }
 
-if (getServerNumrequiredPorts(targetServer) <= portsUnlocked) {
+if (getServerNumPortsRequired(targetServer) <= portsUnlocked) {
     nuke(targetServer);
 } else {
-    tprint(portsUnlocked+ " ports unlocked, " + getServerNumrequiredPorts(targetServer) + " ports required.");
+    tprint(portsUnlocked+ " ports unlocked, " + getServerNumPortsRequired(targetServer) + " ports required.");
 }
 
 if (hasRootAccess(targetServer)) {
