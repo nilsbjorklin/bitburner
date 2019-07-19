@@ -7,8 +7,6 @@ let home = "home";
 export async function main(ns) {
     let argument = ns.args[0].toUpperCase();
 
-
-
     if (argument === "TRACE-START-STOCKS") {
         ns.run(stocks, 1, "START");
         ns.tail(stocks, home, "START");
@@ -76,11 +74,10 @@ export async function main(ns) {
     if (argument === "STOP-HACKNET-NODES") {
         killScript(ns, nodes, "START")
     }
-    
+
     if (argument === "STOP-BOTNET") {
         killScript(ns, botnet, "START")
     }
-
     if (argument === "START") {
         let currentScript = ns.getScriptName();
         ns.tprint("Starting all scripts.");
@@ -99,10 +96,11 @@ export async function main(ns) {
     }
 
     if (argument === "STOP") {
-
         let currentScript = ns.getScriptName();
 
         ns.tprint("Stopping all scripts.");
+
+        await ns.run(currentScript, 1, "STOP-STOCKS");
 
         ns.run(currentScript, 1, "STOP-STOCKS");
 
@@ -116,10 +114,10 @@ export async function main(ns) {
 
         ns.tprint("All scripts killed.");
     }
-} 
+}
 
-function killScript(ns, scriptName, argument){
-    if (ns.kill(scriptName, home, argument)){
+function killScript(ns, scriptName, argument) {
+    if (ns.kill(scriptName, home, argument)) {
         ns.tprint(`Killed script '${botnet}' with argument '${argument}'.`);
     } else {
         ns.tprint(`Failed to kill script '${botnet}' with argument '${argument}'.`);
