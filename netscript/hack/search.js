@@ -1,32 +1,41 @@
 let serverNames = [];
 let servers = [];
+let programs = ["BruteSSH.exe", "FTPCrack.exe", "relaySMTP.exe", "HTTPWorm.exe", "SQLInject.exe"];
+let portPrograms;
 let hackingLevel;
 let hackScript = "/netscript/hack/hack.js";
 let backupServer;
 
 export async function main(ns) {
+    portPrograms = 0;
+    for (let i = 0; i < programs.length; i++)
+        if (programExists(ns, programs[i])) portPrograms++;
+
     ns.disableLog("ALL");
     if (ns.args[0].toUpperCase() === "START") {
         ns.tprint("[STARTING SERVER SEARCHING SCRIPT]");
+        while (true) {
+            servers = [];
 
-        hackingLevel = ns.getHackingLevel();
-        let hostName = ns.getHostname();
-        findServers(ns);
+            hackingLevel = ns.getHackingLevel();
+            let hostName = ns.getHostname();
+            findServers(ns);
 
-        //Adding servers as objects
-        for (let i = 1; i < serverNames.length; i++) addServer(ns, serverNames[i]);
+            //Adding servers as objects
+            for (let i = 0; i < serverNames.length; i++) addServer(ns, serverNames[i]);
 
-        //Sorting servers based on avaible money
-        servers.sort(compareAvailableMoney);
-        backupServer = servers[0];
-        ns.print(" - Setting backup server: " + backupServer.name);
-        
-        for (let i = 0; i < servers.length; i++) {
-            await startHack(ns, servers[i]);
+            //Sorting servers based on avaible money
+            servers.sort(compareAvailableMoney);
+            backupServer = servers[0];
+            ns.print(" - Setting backup server: " + backupServer.name);
+
+            for (let i = 0; i < servers.length; i++) {
+                startHack(ns, servers[i]);
+            }
+            await ns.sleep(10000);
         }
 
-        printAllServers(ns, "SUMMARY");
-        ns.tprint("[SERVER SEARCHING SCRIPT EXITED]");
+        //ns.tprint("[SERVER SEARCHING SCRIPT EXITED]");
 
     } else if (ns.args[0].toUpperCase() === "STOP") {
         killAll(ns);
@@ -148,32 +157,36 @@ function getAdjacent(ns, name) {
 
 function addServer(ns, name) {
     let requiredHackingLevel = ns.getServerRequiredHackingLevel(name);
-    let maxMoney =  0;
-    
+    let requiredPorts = ns.getServerNumPortsRequired(name);
+    let maxRam = ns.getServerRam(name)[0];
+    let maxMoney = 0;
+
     try {
         maxMoney = ns.getServerMaxMoney(name);
     } catch (err) {
         ns.tprint("ERROR: " + err + " for server: " + name);
     }
 
-    if(maxMoney === 0){
-        ns.print("Max money is 0 for server: " + name);
-    }
-    
-    if (requiredHackingLevel > hackingLevel) {
-        maxMoney = 0;
-        ns.print(`Server ${name} requireds hacking level ${requiredHackingLevel}, current hacking level ${hackingLevel}`);
-    }
+    if (maxMoney !== 0) {
+        if (requiredHackingLevel > hackingLevel) {
+            maxMoney = 0;
+            ns.print(`No money avaiable for '${name}' Hacking level  (${hackingLevel}/${requiredHackingLevel}).`);
+        } else if (portPrograms < requiredPorts) {
+            maxMoney = 0;
+            ns.print(`No money avaiable for '${name}' Ports unlocked (${portPrograms}/${requiredPorts}).`);
+        }
 
+
+    }
     servers.push({
         name: name,
         started: false,
         status: "WAITING",
         threads: 0,
         maxMoney: maxMoney,
-        maxRam: ns.getServerRam(name)[0],
+        maxRam: maxRam,
         requiredHackingLevel: requiredHackingLevel,
-        requiredPorts: ns.getServerNumPortsRequired(name)
+        requiredPorts: requiredPorts
     });
 }
 
@@ -245,61 +258,40 @@ function printMoney(ns, server) {
 }
 
 function printServer(ns, server) {
-    ns.tprint(`Server name: ${server.name}
-    Status: ${server.status}
-    Max money: ${server.maxMoney}
-    Total ram: ${server.maxRam}
-    Required Hack level: ${server.requiredHackingLevel}`);
+    if (server.threads !== 0)
+        ns.tprint(`Server name: ${server.name}
+        Status: ${server.status}
+        Threads running: ${server.threads}
+        Max money: ${server.maxMoney}
+        Total ram: ${server.maxRam}
+        Required Hack level: ${server.requiredHackingLevel}`);
+}
+
+function programExists(ns, program) {
+    return ns.fileExists(program);
 }
 
 function unlock(ns, server) {
-    let portsUnlocked = 0;
-    if (ns.fileExists("BruteSSH.exe")) {
-        ns.brutessh(server.name);
-        portsUnlocked++;
-    } else {
-        ns.print("BruteSSH.exe doesn't exist");
+    if (portPrograms < server.requiredPorts) {
+        setNotStarted(server, `${server.requiredPorts - portPrograms} more ports needs to be unlocked`);
+        return false;
     }
 
-    if (ns.fileExists("FTPCrack.exe")) {
-        ns.ftpcrack(server.name);
-        portsUnlocked++;
-    } else {
-        ns.print("FTPCrack.exe doesn't exist");
-    }
+    try { ns.brutessh(server.name); } catch (err) {}
 
-    if (ns.fileExists("relaySMTP.exe")) {
-        ns.relaysmtp(server.name);
-        portsUnlocked++;
-    } else {
-        ns.print("relaySMTP.exe doesn't exist");
-    }
+    try { ns.ftpcrack(server.name); } catch (err) {}
 
-    if (ns.fileExists("HTTPWorm.exe")) {
-        ns.httpworm(server.name);
-        portsUnlocked++;
-    } else {
-        ns.print("HTTPWorm.exe doesn't exist");
-    }
+    try { ns.relaysmtp(server.name); } catch (err) {}
 
-    if (ns.fileExists("SQLInject.exe")) {
-        ns.sqlinject(server.name);
-        portsUnlocked++;
-    } else {
-        ns.print("SQLInject.exe doesn't exist");
-    }
+    try { ns.httpworm(server.name); } catch (err) {}
 
-    if (portsUnlocked >= server.requiredPorts) {
-        ns.nuke(server.name);
-        if (ns.hasRootAccess(server.name)) {
-            return true;
-        } else {
-            setNotStarted(server, `Could not be unlocked for unknown reason.`);;
-            return false;
-        }
+    try { ns.sqlinject(server.name); } catch (err) {}
+
+    ns.nuke(server.name);
+    if (ns.hasRootAccess(server.name)) {
+        return true;
     } else {
-        ns.print(server.name + " PORTS UNLOCKED: " + portsUnlocked + " REQUIRED: " + server.requiredPorts);
-        setNotStarted(server, `${portsUnlocked}/${server.requiredPorts} unlocked`);
+        setNotStarted(server, `Could not be unlocked for unknown reason.`);
         return false;
     }
 }
@@ -313,40 +305,48 @@ function setNotStarted(server, reason) {
     server.status = `Not started(${reason})`;
 }
 
-async function startHackCurrent(ns, server) {
-    ns.killall(server.name);
-    ns.scp(hackScript, ns.getHostname(), server.name);
+function startHackCurrent(ns, server) {
     let scriptRam = ns.getScriptRam(hackScript, server.name);
     let threads = Math.floor(server.maxRam / scriptRam);
-    if (threads > 0) {
-        await ns.exec(hackScript, server.name, threads, threads, server.name);
-        ns.print(`Started hacking ${server.name} with ${threads}`);
-        server.threads += threads;
+    if (!ns.isRunning(hackScript, server.name, threads, server.name)) {
+        ns.killall(server.name);
+        ns.scp(hackScript, ns.getHostname(), server.name);
+        if (threads > 0) {
+            ns.exec(hackScript, server.name, threads, threads, server.name);
+            ns.print(` * Started hacking current server`);
+            ns.print(` - Running on server: '${server.name}'`);
+            ns.print(` - Number of threads: ${threads}`);
+            server.threads += threads;
+        }
+        setStarted(server, server.name);
     }
-    setStarted(server, server.name);
 }
 
-async function startHackBackup(ns, server, reason) {
-    ns.killall(server.name);
-    ns.scp(hackScript, ns.getHostname(), server.name);
+function startHackBackup(ns, server) {
     let scriptRam = ns.getScriptRam(hackScript, server.name);
     let threads = Math.floor(server.maxRam / scriptRam);
-    if (threads > 0) {
-        await ns.exec(hackScript, server.name, threads, threads, backupServer.name);
-        ns.print(`${reason}, Started hacking ${backupServer.name} from ${server.name} with ${threads}`);
-        backupServer.threads += threads;
+    if (!ns.isRunning(hackScript, server.name, threads, backupServer.name)) {
+        ns.killall(server.name);
+        ns.scp(hackScript, ns.getHostname(), server.name);
+        if (threads > 0) {
+            ns.exec(hackScript, server.name, threads, threads, backupServer.name);
+            ns.print(` * Started hacking backup server`);
+            ns.print(` - Running on server: '${server.name}'`);
+            ns.print(` - Number of threads: ${threads}`);
+            server.threads += threads;
+        }
+        setStarted(server, backupServer.name);
     }
-    setStarted(server, backupServer.name);
 }
 
-async function startHack(ns, server) {
+function startHack(ns, server) {
     if (server.maxRam === 0) {
         setNotStarted(server, `Has no RAM`);
     } else if (unlock(ns, server)) {
         if (server.maxMoney === 0) {
-            await startHackBackup(ns, server, "No avaiable money on server " + server.name);
+            startHackBackup(ns, server);
         } else {
-            await startHackCurrent(ns, server);
+            startHackCurrent(ns, server);
         }
     }
 }
