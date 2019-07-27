@@ -13,6 +13,17 @@ export function updateStocks(ns) {
 
 export async function main(ns) {
     ns.disableLog("ALL");
+    try{
+        if(!ns.purchase4SMarketDataTixApi()){
+            throw "Could not buy Tix API.";
+        }
+        if(!ns.purchase4SMarketData()) {
+            throw "Could not buy market data.";
+        }
+    } catch(err){
+        ns.tprint(err);
+        ns.exit();
+    }
     let argument = ns.args[0].toUpperCase();
 
     if (argument === "START") {
@@ -55,11 +66,11 @@ function getPurchaseAmmount(ns, stock, money) {
     let commision = 100000;
     let stockPrice = ns.getStockAskPrice(stock.symbol);
     let ammount = (money - commision) / stockPrice;
-    
-    if(ammount <= 0)
+
+    if (ammount <= 0)
         return 0;
-    
-    if (ammount + stock.ammount > stock.cap) 
+
+    if (ammount + stock.ammount > stock.cap)
         return stock.cap - stock.ammount;
     return ammount;
 }
@@ -67,7 +78,7 @@ function getPurchaseAmmount(ns, stock, money) {
 function tryPurchase(ns, stock) {
     let money = ns.getServerMoneyAvailable(ns.getHostname());
     let ammount = getPurchaseAmmount(ns, stock, money);
-    
+
     if (ammount !== 0) {
         let price = ns.buyStock(stock.symbol, ammount);
         if (price !== 0) {
@@ -99,7 +110,7 @@ function buyStocks(ns) {
         let stock = stocks[i];
 
         stocksBought += tryPurchase(ns, stock);
-        
+
         if (money < 1000000000) {
             i = stocks.length;
         }

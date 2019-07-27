@@ -1,9 +1,11 @@
 let serverNames = [];
 let servers = [];
 let programs = ["BruteSSH.exe", "FTPCrack.exe", "relaySMTP.exe", "HTTPWorm.exe", "SQLInject.exe"];
+let home = "home";
 let portPrograms;
 let hackingLevel;
 let hackScript = "/netscript/hack/hack.js";
+let controllerScript = "/netscript/controller.js";
 let backupServer;
 
 export async function main(ns) {
@@ -18,7 +20,6 @@ export async function main(ns) {
             servers = [];
 
             hackingLevel = ns.getHackingLevel();
-            let hostName = ns.getHostname();
             findServers(ns);
 
             //Adding servers as objects
@@ -146,7 +147,8 @@ function killAll(ns) {
 }
 
 function findServers(ns) {
-    getAdjacent(ns, "home");
+    getAdjacent(ns, home);
+    //addServer(ns, home);
     for (let i = 0; i < serverNames.length; i++) {
         getAdjacent(ns, serverNames[i]);
     }
@@ -183,12 +185,18 @@ function addServer(ns, name) {
         let requiredHackingLevel = 0;
         let requiredPorts = 0;
         let maxMoney = 0;
+        
         try {
-            maxRam = ns.getServerRam(name)[0];
-            if (!/$botnet.*^/.test(name)) {
+            let serverRam = ns.getServerRam(name);
+            if (!/$botnet.*^/.test(name) && name !== "home") {
                 requiredHackingLevel = ns.getServerRequiredHackingLevel(name);
                 requiredPorts = ns.getServerNumPortsRequired(name);
                 maxMoney = ns.getServerMaxMoney(name);
+            }
+            if(name == "home"){
+                maxRam = serverRam[0] - serverRam[1] - ns.getScriptRam(controllerScript);
+            } else {
+                maxRam = serverRam[0];
             }
         } catch (err) {
             ns.tprint("ERROR: " + err + " for server: " + name);
@@ -202,9 +210,8 @@ function addServer(ns, name) {
                 maxMoney = 0;
                 ns.print(`No money avaiable for '${name}' Ports unlocked (${portPrograms}/${requiredPorts}).`);
             }
-
-
         }
+        
         servers.push({
             name: name,
             started: false,
@@ -318,18 +325,16 @@ function unlock(ns, server) {
     if (portPrograms < server.requiredPorts) {
         setNotStarted(server, `${server.requiredPorts - portPrograms} more ports needs to be unlocked`);
         return false;
+    } else {
+        ns.print(`Trying to unlock server '${server.name}'`);
     }
-
+    
     try { ns.brutessh(server.name); } catch (err) {}
-
     try { ns.ftpcrack(server.name); } catch (err) {}
-
     try { ns.relaysmtp(server.name); } catch (err) {}
-
     try { ns.httpworm(server.name); } catch (err) {}
-
     try { ns.sqlinject(server.name); } catch (err) {}
-
+    
     ns.nuke(server.name);
     if (ns.hasRootAccess(server.name)) {
         return true;
@@ -369,8 +374,12 @@ function startHackBackup(ns, server) {
     let scriptRam = ns.getScriptRam(hackScript, server.name);
     let threads = Math.floor(server.maxRam / scriptRam);
     if (!ns.isRunning(hackScript, server.name, threads, backupServer.name)) {
-        ns.killall(server.name);
-        ns.scp(hackScript, ns.getHostname(), server.name);
+        if(server.name !== "home"){
+            ns.killall(server.name);
+            ns.scp(hackScript, ns.getHostname(), server.name);
+        } else {
+            ns.kill();
+        }
         if (threads > 0) {
             ns.exec(hackScript, server.name, threads, threads, backupServer.name);
             ns.print(` * Started hacking backup server`);
