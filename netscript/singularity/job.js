@@ -5,16 +5,20 @@ export async function main(ns) {
     addJobs();
     while (true) {
         if (getJob(ns)) {
-            let job = jobs[jobIndex];
-            let newJob = ns.applyToCompany(job.company, job.role);
+            let newJob = ns.applyToCompany(jobs[jobIndex].company, jobs[jobIndex].role);
             if (newJob) {
-                ns.print(`\nNew job:\n - Company: ${job.company}\n - Role: ${job.role}`);
-                if (ns.isBusy())
-                    ns.workForCompany(job.company);
-                ns.print(`\nStarted working at:\n - Company: ${job.company}\n - Role: ${job.role}`);
+                ns.print(`\nNew job:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
+                ns.stopAction();
             } else {
-                ns.print(`\nCould not get new job:\n - Company: ${job.company}\n - Role: ${job.role}`);
+                ns.print(`\nCould not get new job:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
             }
+        }
+
+        if (!ns.isBusy()) {
+            ns.workForCompany(jobs[jobIndex].company);
+            ns.tprint(`\nStarted working at:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
+        } else {
+            ns.print("Already working.");
         }
         await ns.sleep(60000);
     }
@@ -82,8 +86,7 @@ function addJob(company, role, hacking, strength, defense, dexterity, agility, c
             dexterity: dexterity,
             agility: agility,
             charisma: charisma,
-            reputation,
-            reputation
+            reputation: reputation
         }
     });
 }

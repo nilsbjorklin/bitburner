@@ -9,14 +9,14 @@ let controllerScript = "/netscript/controller.js";
 let backupServer;
 
 export async function main(ns) {
-    portPrograms = 0;
-    for (let i = 0; i < programs.length; i++)
-        if (programExists(ns, programs[i])) portPrograms++;
 
     ns.disableLog("ALL");
     if (ns.args[0].toUpperCase() === "START") {
         ns.tprint("[STARTING SERVER SEARCHING SCRIPT]");
         while (true) {
+            portPrograms = 0;
+            for (let i = 0; i < programs.length; i++)
+                if (programExists(ns, programs[i])) portPrograms++;
             servers = [];
 
             hackingLevel = ns.getHackingLevel();
