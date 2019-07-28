@@ -1,5 +1,5 @@
-import { start as job } from "/netscript/singularity/job.js";
 import { start as faction } from "/netscript/singularity/faction.js";
+import { start as job } from "/netscript/singularity/job.js";
 import { start as program } from "/netscript/singularity/program.js";
 
 let home = "home";
