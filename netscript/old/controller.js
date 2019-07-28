@@ -18,12 +18,12 @@ export async function main(ns) {
     }
 }
 
-function stock(ns, ammount, argument){
+function stock(ns, ammount, argument) {
     if (ammount == "ALL") {
         ns.run("/netscript/stock/all.js", 1, ns.args[1]);
-    } else if(ammount == "ONE"){
+    } else if (ammount == "ONE") {
         logger.info("START", "SCRIPT: '/netscript/stock/one.js'");
-        
+
         ns.run("/netscript/stock/one.js", 1, argument, "debug", 50, 50);
     } else {
         logger.error("ERROR", "INVALID ACTION: " + argument);

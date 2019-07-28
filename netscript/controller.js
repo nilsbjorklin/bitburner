@@ -2,8 +2,10 @@ let stocks = "/netscript/stock/stocks.js";
 let search = "/netscript/hack/search.js";
 let nodes = "/netscript/servers/hacknet-nodes.js";
 let botnet = "/netscript/servers/botnet.js";
+let singularityController = "/netscript/singularity/singularityController.js";
 let job = "/netscript/singularity/job.js";
-let misc = "/netscript/singularity/misc.js";
+let faction = "/netscript/singularity/faction.js";
+let program = "/netscript/singularity/program.js";
 let home = "home";
 
 export async function main(ns) {
@@ -61,20 +63,29 @@ export async function main(ns) {
         }
 
         if (script == "ALL" || script == "JOB") {
-            ns.tprint("Starting job script.");
-            await ns.run(job, 1);
+            ns.tprint("Starting singularity script for jobs..");
+            await ns.run(singularityController, 1, "JOB");
 
             if (trace)
-                ns.tail(job, home);
+                ns.tail(job, home, "JOB");
             await ns.sleep(500);
         }
 
-        if (script == "ALL" || script == "MISC") {
-            ns.tprint("Starting misc script.");
-            await ns.run(misc, 1);
+        if (script == "ALL" || script == "PROGRAM") {
+            ns.tprint("Starting singularity script for programs..");
+            await ns.run(singularityController, 1, "PROGRAM");
 
             if (trace)
-                ns.tail(misc, home);
+                ns.tail(job, home, "PROGRAM");
+            await ns.sleep(500);
+        }
+
+        if (script == "ALL" || script == "FACTION") {
+            ns.tprint("Starting singularity script for factions..");
+            await ns.run(singularityController, 1, "FACTION");
+
+            if (trace)
+                ns.tail(job, home, "FACTION");
             await ns.sleep(500);
         }
 
@@ -114,12 +125,24 @@ export async function main(ns) {
 
         if (script == "ALL" || script == "JOB") {
             ns.tprint("Stopping job script.");
-            killScript(ns, job)
+            killScript(ns, job);
         }
 
-        if (script == "ALL" || script == "MISC") {
-            ns.tprint("Stopping misc script.");
-            killScript(ns, misc)
+
+        if (script == "ALL" || script == "PROGRAM") {
+            ns.tprint("Stopping program script.");
+            killScript(ns, program);
+        }
+
+
+        if (script == "ALL" || script == "FACTION") {
+            ns.tprint("Stopping faction script.");
+            killScript(ns, faction);
+        }
+
+        if (script == "ALL" || script == "SINGULARITY") {
+            ns.tprint("Stopping singularity script.");
+            killScript(ns, singularityController);
         }
 
         await ns.sleep(500);

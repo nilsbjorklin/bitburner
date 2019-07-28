@@ -2,25 +2,31 @@ let jobs;
 let jobIndex = -1;
 
 export async function main(ns) {
-    addJobs();
     while (true) {
-        if (getJob(ns)) {
-            let newJob = ns.applyToCompany(jobs[jobIndex].company, jobs[jobIndex].role);
-            if (newJob) {
-                ns.print(`\nNew job:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
-                ns.stopAction();
-            } else {
-                ns.print(`\nCould not get new job:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
-            }
-        }
-
-        if (!ns.isBusy()) {
-            ns.workForCompany(jobs[jobIndex].company);
-            ns.tprint(`\nStarted working at:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
-        } else {
-            ns.print("Already working.");
-        }
+        start(ns);
         await ns.sleep(60000);
+    }
+}
+
+export function start(ns) {
+    ns.disableLog("ALL");
+    if (jobs === undefined)
+        addJobs();
+    if (getJob(ns)) {
+        let newJob = ns.applyToCompany(jobs[jobIndex].company, jobs[jobIndex].role);
+        if (newJob) {
+            ns.print(`\nNew job:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
+            ns.stopAction();
+        } else {
+            ns.print(`\nCould not get new job:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
+        }
+    }
+
+    if (!ns.isBusy()) {
+        ns.workForCompany(jobs[jobIndex].company);
+        ns.tprint(`\nStarted working at:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
+    } else {
+        ns.print("Already working.");
     }
 }
 

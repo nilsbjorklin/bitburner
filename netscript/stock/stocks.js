@@ -13,14 +13,14 @@ export function updateStocks(ns) {
 
 export async function main(ns) {
     ns.disableLog("ALL");
-    try{
-        if(!ns.purchase4SMarketDataTixApi()){
+    try {
+        if (!ns.purchase4SMarketDataTixApi()) {
             throw "Could not buy Tix API.";
         }
-        if(!ns.purchase4SMarketData()) {
+        if (!ns.purchase4SMarketData()) {
             throw "Could not buy market data.";
         }
-    } catch(err){
+    } catch (err) {
         ns.tprint(err);
         ns.exit();
     }
