@@ -3,6 +3,7 @@ let search = "/netscript/hack/search.js";
 let nodes = "/netscript/servers/hacknet-nodes.js";
 let botnet = "/netscript/servers/botnet.js";
 let job = "/netscript/singularity/job.js";
+let misc = "/netscript/singularity/misc.js";
 let home = "home";
 
 export async function main(ns) {
@@ -29,6 +30,7 @@ export async function main(ns) {
 
             if (trace)
                 ns.tail(stocks, home, "START");
+            await ns.sleep(500);
         }
 
         if (script == "ALL" || script == "SEARCH") {
@@ -37,6 +39,7 @@ export async function main(ns) {
 
             if (trace)
                 ns.tail(search, home, "START");
+            await ns.sleep(500);
         }
 
         if (script == "ALL" || script == "HACKNET") {
@@ -45,6 +48,7 @@ export async function main(ns) {
 
             if (trace)
                 ns.tail(nodes, home, "START");
+            await ns.sleep(500);
         }
 
         if (script == "ALL" || script == "BOTNET") {
@@ -53,6 +57,7 @@ export async function main(ns) {
 
             if (trace)
                 ns.tail(botnet, home, "START");
+            await ns.sleep(500);
         }
 
         if (script == "ALL" || script == "JOB") {
@@ -60,14 +65,24 @@ export async function main(ns) {
             await ns.run(job, 1);
 
             if (trace)
-                ns.tail(job, home, "START");
+                ns.tail(job, home);
+            await ns.sleep(500);
+        }
+
+        if (script == "ALL" || script == "MISC") {
+            ns.tprint("Starting misc script.");
+            await ns.run(misc, 1);
+
+            if (trace)
+                ns.tail(misc, home);
+            await ns.sleep(500);
         }
 
         await ns.sleep(500);
 
         if (script == "ALL")
             ns.tprint("All scripts started.");
-            
+
     } else if (argument === "STOP") {
         let script = "ALL";
         if (ns.args.length > 1)
@@ -100,6 +115,11 @@ export async function main(ns) {
         if (script == "ALL" || script == "JOB") {
             ns.tprint("Stopping job script.");
             killScript(ns, job)
+        }
+
+        if (script == "ALL" || script == "MISC") {
+            ns.tprint("Stopping misc script.");
+            killScript(ns, misc)
         }
 
         await ns.sleep(500);

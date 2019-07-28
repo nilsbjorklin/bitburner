@@ -2,6 +2,7 @@ let home = "home";
 let programs;
 
 export async function main(ns) {
+    ns.disableLog("ALL");
     while (true) {
         let money = ns.getServerMoneyAvailable(home);
         if (money > 1000000)
