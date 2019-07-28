@@ -13,22 +13,22 @@ export async function start(ns) {
     joinFactions(ns);
     characterInformation = ns.getCharacterInformation();
 
-    if (!ns.isBusy()){
+    if (!ns.isBusy()) {
         startWork(ns, getFaction(ns));
-    }else
+    } else
         ns.print("Already working.")
 
     await ns.sleep(60000);
 }
 
-function getFaction(ns){
+function getFaction(ns) {
     let factions = characterInformation.factions;
     let augmentations = ns.getOwnedAugmentations(true);
-    for(let i = 0; i < factions.length; i++){
+    for (let i = 0; i < factions.length; i++) {
         let factionName = factions[i];
         let factionAugmentations = ns.getAugmentationsFromFaction(factionName);
-        for(let j = 0; j < factionAugmentations.length; j++){
-            if(augmentations.indexOf(factionAugmentations[j]) === -1 && /$NeuroFlux Governor.*^/){
+        for (let j = 0; j < factionAugmentations.length; j++) {
+            if (augmentations.indexOf(factionAugmentations[j]) === -1 && /$NeuroFlux Governor.*^/) {
                 ns.tprint(`Found augmentation: ${factionAugmentations[j]} for faction: ${factionName}`);
                 return factionName;
             }

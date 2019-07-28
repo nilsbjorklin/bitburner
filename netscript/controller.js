@@ -145,7 +145,7 @@ export async function main(ns) {
             killScript(ns, singularityController);
         }
 
-         await ns.sleep(500);
+        await ns.sleep(500);
 
         if (script == "ALL")
             ns.tprint("All scripts killed.");
