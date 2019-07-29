@@ -1,3 +1,5 @@
+let characterInformation;
+let programs;
 export async function main(ns) {
     while (true) {
         start(ns);
@@ -5,8 +7,9 @@ export async function main(ns) {
     }
 }
 
-export function start(ns) {
+export function start(ns){
     ns.disableLog("ALL");
+    characterInformation = ns.getCharacterInformation();
     purchasePrograms(ns);
 
     if (!ns.isBusy())
@@ -29,7 +32,7 @@ function purchasePrograms(ns) {
         let programName = programs.shift().program;
         while (ns.purchaseProgram(programName)) {
             ns.tprint(`Bought program: ${programName}`);
-            program = programs.shift().program;
+            programName = programs.shift().program;
         }
     }
 }

@@ -65,13 +65,13 @@ export async function main(ns) {
         if (script == "ALL" || script == "JOB") {
             ns.tprint("Starting singularity script for jobs..");
             await ns.run(singularityController, 1, "JOB");
-
+            
             if (trace)
                 ns.tail(job, home, "JOB");
             await ns.sleep(500);
         }
 
-        if (script == "ALL" || script == "PROGRAM") {
+        if (script == "PROGRAM") {
             ns.tprint("Starting singularity script for programs..");
             await ns.run(singularityController, 1, "PROGRAM");
 
@@ -80,7 +80,7 @@ export async function main(ns) {
             await ns.sleep(500);
         }
 
-        if (script == "ALL" || script == "FACTION") {
+        if (script == "FACTION") {
             ns.tprint("Starting singularity script for factions..");
             await ns.run(singularityController, 1, "FACTION");
 

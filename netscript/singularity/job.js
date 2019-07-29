@@ -24,7 +24,7 @@ export function start(ns) {
 
     if (!ns.isBusy()) {
         ns.workForCompany(jobs[jobIndex].company);
-        ns.tprint(`\nStarted working at:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
+        ns.print(`\nStarted working at:\n - Company: ${jobs[jobIndex].company}\n - Role: ${jobs[jobIndex].role}`);
     } else {
         ns.print("Already working.");
     }

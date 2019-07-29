@@ -3,7 +3,7 @@ let characterInformation;
 
 export async function main(ns) {
     while (true) {
-        start(ns);
+        await start(ns);
         await ns.sleep(60000);
     }
 }
@@ -15,10 +15,9 @@ export async function start(ns) {
 
     if (!ns.isBusy()) {
         startWork(ns, getFaction(ns));
-    } else
-        ns.print("Already working.")
-
-    await ns.sleep(60000);
+    } else {
+        ns.print("Already working.");
+    }
 }
 
 function getFaction(ns) {
@@ -26,11 +25,18 @@ function getFaction(ns) {
     let augmentations = ns.getOwnedAugmentations(true);
     for (let i = 0; i < factions.length; i++) {
         let factionName = factions[i];
+        let factionRep = ns.getFactionRep(factionName);
         let factionAugmentations = ns.getAugmentationsFromFaction(factionName);
         for (let j = 0; j < factionAugmentations.length; j++) {
             if (augmentations.indexOf(factionAugmentations[j]) === -1 && /$NeuroFlux Governor.*^/) {
-                ns.tprint(`Found augmentation: ${factionAugmentations[j]} for faction: ${factionName}`);
-                return factionName;
+                let requiredRep = ns.getAugmentationCost(factionAugmentations[j])[0];
+                if (factionRep < requiredRep) {
+                    ns.print(` * Found augmentation: ${factionAugmentations[j]}`);
+                    ns.print(` - Faction: ${factionName}`);
+                    ns.print(` - Faction reputation: ${factionRep}`);
+                    ns.print(` - Required reputation: ${requiredRep}`);
+                    return factionName;
+                }
             }
         }
     }
