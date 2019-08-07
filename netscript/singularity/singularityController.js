@@ -16,6 +16,10 @@ export async function main(ns) {
             job(ns);
         } else if (argument == "PROGRAM") {
             program(ns);
+        } else {
+            program(ns);
+            faction(ns);
+            job(ns);
         }
 
         await ns.sleep(60000);
